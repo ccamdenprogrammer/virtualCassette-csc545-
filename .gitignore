@@ -29,13 +29,16 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Audio files (don't commit test audio)
-*.wav
-*.mp3
-*.flac
-*.ogg
-*.aiff
-*.aif
+# Audio files (general exclusion)
+# *.wav
+# *.mp3
+# *.flac
+# *.ogg
+# *.aiff
+# *.aif
+
+# But include samples folder
+!samples/
 
 # Logs
 *.log
