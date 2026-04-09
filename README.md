@@ -10,31 +10,6 @@ A sleek desktop audio player with real-time effects, styled as a modern cassette
 - **Live playback**: Effects applied in real-time without interruption
 - **Export**: Save processed audio to WAV with current effect settings
 
-## Screenshot
-
-```
-┌─────────────────────────────────────────┐
-│           ╭─────────────────╮           │
-│           │  ◉           ◉  │           │
-│           │    ═══════════  │           │
-│           │   [file name]   │           │
-│           ╰─────────────────╯           │
-│                                         │
-│              ┌─────────┐                │
-│              │  SPEED  │                │
-│              │  1.00x  │                │
-│              └─────────┘                │
-│                                         │
-│    ┌─────┐   ┌─────┐   ┌─────┐         │
-│    │ MIX │   │DELAY│   │FDBK │         │
-│    │ 25% │   │250ms│   │ 40% │         │
-│    └─────┘   └─────┘   └─────┘         │
-│                                         │
-│   ▶ Play  ⏸ Pause  ⏹ Stop  ⟲ Loop     │
-│                                         │
-│        [ Load ]    [ Export ]           │
-└─────────────────────────────────────────┘
-```
 
 ## Installation
 
