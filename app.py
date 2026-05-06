@@ -162,12 +162,20 @@ class App:
             name: Parameter name
             value: New value
         """
-        selected_ids = list(self._selected_files)
+        selected_ids = list(self._selected_files) or [f.id for f in self._audio_files]
         self.parameter_store.set_value(name, value, selected_ids)
+
+    def set_file_parameter(self, file_id: str, name: str, value: Any) -> None:
+        """Update a parameter for one specific file."""
+        self.parameter_store.set_value(name, value, [file_id])
+
+    def get_file_parameters(self, file_id: str):
+        """Get the current parameter snapshot for one file."""
+        return self.parameter_store.get_snapshot_for_file(file_id)
 
     def reset_parameters(self) -> None:
         """Reset all parameters to defaults for selected files."""
-        selected_ids = list(self._selected_files)
+        selected_ids = list(self._selected_files) or [f.id for f in self._audio_files]
         self.parameter_store.reset(selected_ids)
 
     def get_transport_info(self) -> TransportInfo:
@@ -181,6 +189,10 @@ class App:
             # Clear error after reading
             self.engine._callback_error = None
         return error
+
+    def get_metering_snapshot(self) -> dict[str, object]:
+        """Get live stereo metering for each track and the master bus."""
+        return self.engine.get_metering_snapshot()
 
     def export(self, output_path: str | Path) -> Path:
         """
@@ -219,8 +231,11 @@ class App:
             raise ValueError("No audio files loaded")
         # For now, separate the first file
         audio_file = self._audio_files[0]
-        self.stem_separator.separate(str(audio_file.path), two_stems)
-        self._stems = self.stem_separator.get_stems(audio_file.filename)
+        self._stems = self.stem_separator.separate(str(audio_file.path), two_stems)
+        if not self._stems:
+            raise ValueError(
+                "Separation finished but no stem files were found in the output folder"
+            )
         return self._stems
 
     def load_stems_as_tracks(self) -> None:

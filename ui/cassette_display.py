@@ -31,7 +31,7 @@ class CassetteDisplay(tk.Frame):
             width: Display width (default from theme)
             height: Display height (default from theme)
         """
-        super().__init__(parent, bg=COLORS['bg_dark'])
+        super().__init__(parent, bg=COLORS['cassette_section_bg'])
 
         self.width = width or DIMENSIONS['cassette_width']
         self.height = height or DIMENSIONS['cassette_height']
@@ -58,7 +58,7 @@ class CassetteDisplay(tk.Frame):
             self,
             width=self.width,
             height=self.height,
-            bg=COLORS['bg_dark'],
+            bg=COLORS['cassette_section_bg'],
             highlightthickness=0,
         )
         self.canvas.pack(padx=10, pady=10)

@@ -55,7 +55,14 @@ class BlockProcessor:
 
         # Smoothed parameter values
         self._smooth_speed = config.DEFAULT_SPEED
-        self._smooth_gain = db_to_linear(config.DEFAULT_OUTPUT_GAIN_DB)
+        self._smooth_gain = np.array(
+            [
+                db_to_linear(config.DEFAULT_OUTPUT_GAIN_LEFT_DB),
+                db_to_linear(config.DEFAULT_OUTPUT_GAIN_RIGHT_DB),
+            ],
+            dtype=np.float32,
+        )
+        self._smooth_track_volume = config.DEFAULT_TRACK_VOLUME
 
         # Smoothing coefficient
         self._alpha = config.PARAM_SMOOTHING_ALPHA
@@ -67,7 +74,14 @@ class BlockProcessor:
 
         # Reset smoothed values
         self._smooth_speed = config.DEFAULT_SPEED
-        self._smooth_gain = db_to_linear(config.DEFAULT_OUTPUT_GAIN_DB)
+        self._smooth_gain = np.array(
+            [
+                db_to_linear(config.DEFAULT_OUTPUT_GAIN_LEFT_DB),
+                db_to_linear(config.DEFAULT_OUTPUT_GAIN_RIGHT_DB),
+            ],
+            dtype=np.float32,
+        )
+        self._smooth_track_volume = config.DEFAULT_TRACK_VOLUME
 
     def process(self, output_frames: int) -> np.ndarray:
         """
@@ -86,8 +100,23 @@ class BlockProcessor:
         target_speed = params.speed if not params.bypass_speed else 1.0
         self._smooth_speed += self._alpha * (target_speed - self._smooth_speed)
 
-        target_gain = db_to_linear(params.output_gain_db)
+        target_gain = np.array(
+            [
+                db_to_linear(params.output_gain_left_db),
+                db_to_linear(params.output_gain_right_db),
+            ],
+            dtype=np.float32,
+        )
         self._smooth_gain += self._alpha * (target_gain - self._smooth_gain)
+
+        target_track_volume = np.clip(
+            params.track_volume,
+            config.TRACK_VOLUME_MIN,
+            config.TRACK_VOLUME_MAX,
+        )
+        self._smooth_track_volume += self._alpha * (
+            target_track_volume - self._smooth_track_volume
+        )
 
         # Read from source with speed control
         block, exhausted = self.source_reader.read(output_frames, self._smooth_speed)
@@ -102,7 +131,10 @@ class BlockProcessor:
         )
 
         # Apply output gain
-        block = block * self._smooth_gain
+        if block.ndim == 2 and block.shape[1] > 1:
+            block = block * self._smooth_track_volume * self._smooth_gain[: block.shape[1]]
+        else:
+            block = block * self._smooth_track_volume * self._smooth_gain[0]
 
         # Final hard clip to prevent output clipping
         block = np.clip(block, -1.0, 1.0)

@@ -21,6 +21,7 @@ class TestEffectParameters:
         assert params.echo_mix == config.DEFAULT_ECHO_MIX
         assert params.reverb_mix == config.DEFAULT_REVERB_MIX
         assert params.output_gain_db == config.DEFAULT_OUTPUT_GAIN_DB
+        assert params.track_volume == config.DEFAULT_TRACK_VOLUME
 
     def test_custom_values(self):
         """Test creating parameters with custom values."""
@@ -28,11 +29,13 @@ class TestEffectParameters:
             speed=1.5,
             pitch_semitones=5.0,
             echo_mix=0.3,
+            track_volume=0.8,
         )
 
         assert params.speed == 1.5
         assert params.pitch_semitones == 5.0
         assert params.echo_mix == 0.3
+        assert params.track_volume == 0.8
 
 
 class TestParameterStore:

@@ -34,6 +34,11 @@ class EffectParameters:
 
     # Output gain in dB
     output_gain_db: float = config.DEFAULT_OUTPUT_GAIN_DB
+    output_gain_left_db: float = config.DEFAULT_OUTPUT_GAIN_LEFT_DB
+    output_gain_right_db: float = config.DEFAULT_OUTPUT_GAIN_RIGHT_DB
+
+    # Per-track volume trim (linear)
+    track_volume: float = config.DEFAULT_TRACK_VOLUME
 
     # Bypass flags
     bypass_speed: bool = False
@@ -116,6 +121,7 @@ class ParameterStore:
         with self._lock:
             if file_ids is None:
                 self._file_params.clear()
+                self._defaults = EffectParameters()
             else:
                 for file_id in file_ids:
                     self._file_params[file_id] = copy.copy(self._defaults)

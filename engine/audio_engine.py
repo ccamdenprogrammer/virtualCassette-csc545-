@@ -54,6 +54,9 @@ class AudioEngine:
         self._transport_lock = threading.Lock()
         self._transport_state = TransportState.STOPPED
         self._loop_enabled = False
+        self._meter_lock = threading.Lock()
+        self._track_metering: dict[str, dict[str, object]] = {}
+        self._master_metering = self._empty_meter()
 
         # Audio data (multi-file support)
         self._audio_files: dict[str, AudioFile] = {}
@@ -108,6 +111,8 @@ class AudioEngine:
             self._channels,
             file_id  # Pass file_id to BlockProcessor
         )
+        with self._meter_lock:
+            self._track_metering[file_id] = self._empty_meter()
 
         logger.info(f"Loaded audio: {audio_file.filename}")
 
@@ -122,6 +127,8 @@ class AudioEngine:
             del self._audio_files[file_id]
             del self._source_readers[file_id]
             del self._block_processors[file_id]
+            with self._meter_lock:
+                self._track_metering.pop(file_id, None)
             logger.info(f"Removed audio: {file_id}")
 
     def has_audio_loaded(self) -> bool:
@@ -167,6 +174,7 @@ class AudioEngine:
 
         for processor in self._block_processors.values():
             processor.reset()
+        self._reset_metering()
 
         logger.info("Playback stopped")
 
@@ -230,6 +238,17 @@ class AudioEngine:
         """Get any error that occurred in the audio callback."""
         return self._callback_error
 
+    def get_metering_snapshot(self) -> dict[str, object]:
+        """Get the latest stereo metering for tracks and the master bus."""
+        with self._meter_lock:
+            return {
+                "master": dict(self._master_metering),
+                "tracks": {
+                    file_id: dict(meter)
+                    for file_id, meter in self._track_metering.items()
+                },
+            }
+
     def shutdown(self) -> None:
         """Shutdown engine and release resources."""
         logger.info("Shutting down audio engine")
@@ -238,6 +257,7 @@ class AudioEngine:
         self._audio_files.clear()
         self._source_readers.clear()
         self._block_processors.clear()
+        self._reset_metering()
 
     def _ensure_stream(self) -> None:
         """Ensure output stream is open and started."""
@@ -298,16 +318,25 @@ class AudioEngine:
 
         if state != TransportState.PLAYING or not self._block_processors:
             outdata.fill(0)
+            self._reset_metering()
             return
 
         try:
             # Process audio blocks from all files and mix
             mixed_block = np.zeros((frames, self._channels), dtype=np.float32)
-            
-            for processor in self._block_processors.values():
+            track_metering: dict[str, dict[str, object]] = {}
+
+            for file_id, processor in self._block_processors.items():
                 block = processor.process(frames)
-                # Mix by adding (with clipping to prevent overflow)
+                track_metering[file_id] = self._compute_block_meter(block)
                 mixed_block += block
+
+            mixed_block = np.clip(mixed_block, -1.0, 1.0)
+            master_meter = self._compute_block_meter(mixed_block)
+            with self._meter_lock:
+                self._track_metering.update(track_metering)
+                self._master_metering = master_meter
+
             # Ensure correct shape
             if mixed_block.shape[0] != frames:
                 # Handle size mismatch
@@ -327,12 +356,14 @@ class AudioEngine:
             if all_exhausted:
                 with self._transport_lock:
                     self._transport_state = TransportState.STOPPED
+                self._reset_metering()
 
         except Exception as e:
             self._callback_error = e
             outdata.fill(0)
             with self._transport_lock:
                 self._transport_state = TransportState.STOPPED
+            self._reset_metering()
 
     def _stream_finished_callback(self) -> None:
         """Called when stream finishes."""
@@ -344,3 +375,33 @@ class AudioEngine:
 
         if self._on_playback_complete:
             self._on_playback_complete()
+
+    def _empty_meter(self) -> dict[str, object]:
+        """Create an empty stereo meter snapshot."""
+        return {"left": 0.0, "right": 0.0, "clip_left": False, "clip_right": False}
+
+    def _reset_metering(self) -> None:
+        """Reset all track and master meters to silence."""
+        with self._meter_lock:
+            self._master_metering = self._empty_meter()
+            for file_id in list(self._track_metering.keys()):
+                self._track_metering[file_id] = self._empty_meter()
+
+    def _compute_block_meter(self, block: np.ndarray) -> dict[str, object]:
+        """Compute stereo peak/clip information for an audio block."""
+        if block.size == 0:
+            return self._empty_meter()
+
+        if block.ndim == 1:
+            block = block[:, np.newaxis]
+
+        left = float(np.max(np.abs(block[:, 0]))) if block.shape[0] else 0.0
+        right_channel = 1 if block.shape[1] > 1 else 0
+        right = float(np.max(np.abs(block[:, right_channel]))) if block.shape[0] else 0.0
+
+        return {
+            "left": min(left, 1.0),
+            "right": min(right, 1.0),
+            "clip_left": left >= 0.999,
+            "clip_right": right >= 0.999,
+        }

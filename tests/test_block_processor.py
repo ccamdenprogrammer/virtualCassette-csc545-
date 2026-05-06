@@ -20,12 +20,14 @@ class TestBlockProcessor:
         audio = np.random.randn(10000, 2).astype(np.float32) * 0.5
         source_reader = SourceReader(audio, 10000, loop_enabled=False)
         param_store = ParameterStore()
+        param_store.add_file("file1")
 
         processor = BlockProcessor(
             source_reader=source_reader,
             parameter_store=param_store,
             sample_rate=44100,
             channels=2,
+            file_id="file1",
         )
 
         return processor, param_store
@@ -66,16 +68,18 @@ class TestBlockProcessor:
         audio = np.random.randn(10000, 2).astype(np.float32) * 0.5
         source_reader2 = SourceReader(audio, 10000, loop_enabled=False)
         param_store2 = ParameterStore()
+        param_store2.add_file("file2")
         processor2 = BlockProcessor(
             source_reader=source_reader2,
             parameter_store=param_store2,
             sample_rate=44100,
             channels=2,
+            file_id="file2",
         )
 
         # Set different speeds
-        param_store1.update(speed=1.0)
-        param_store2.update(speed=2.0)
+        param_store1.update(file_ids=["file1"], speed=1.0)
+        param_store2.update(file_ids=["file2"], speed=2.0)
 
         # Process same number of blocks
         for _ in range(10):
@@ -106,12 +110,14 @@ class TestBlockProcessor:
         audio = np.random.randn(1000, 2).astype(np.float32)
         source_reader = SourceReader(audio, 1000, loop_enabled=False)
         param_store = ParameterStore()
+        param_store.add_file("file3")
 
         processor = BlockProcessor(
             source_reader=source_reader,
             parameter_store=param_store,
             sample_rate=44100,
             channels=2,
+            file_id="file3",
         )
 
         # Process until exhausted
@@ -128,6 +134,7 @@ class TestBlockProcessor:
 
         # Apply various effects
         param_store.update(
+            file_ids=["file1"],
             pitch_semitones=5.0,
             echo_mix=0.5,
             reverb_mix=0.5,

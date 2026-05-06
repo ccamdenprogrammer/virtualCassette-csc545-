@@ -2,6 +2,7 @@
 venv/
 .venv/
 env/
+.stemenv/
 
 # Python cache
 __pycache__/
@@ -22,6 +23,7 @@ build/
 
 # Testing
 .pytest_cache/
+pytest-cache-files-*/
 .coverage
 htmlcov/
 
@@ -42,3 +44,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Generated stem separation output
+separated/

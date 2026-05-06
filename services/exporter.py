@@ -154,8 +154,22 @@ class Exporter:
                         )
 
                         # Apply gain
-                        gain = db_to_linear(params.output_gain_db)
-                        block = block * gain
+                        gain = np.array(
+                            [
+                                db_to_linear(params.output_gain_left_db),
+                                db_to_linear(params.output_gain_right_db),
+                            ],
+                            dtype=np.float32,
+                        )
+                        track_volume = np.clip(
+                            params.track_volume,
+                            config.TRACK_VOLUME_MIN,
+                            config.TRACK_VOLUME_MAX,
+                        )
+                        if block.ndim == 2 and block.shape[1] > 1:
+                            block = block * track_volume * gain[: block.shape[1]]
+                        else:
+                            block = block * track_volume * gain[0]
                         
                         # Add to mix
                         mixed_block += block
